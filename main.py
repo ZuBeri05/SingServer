@@ -148,7 +148,7 @@ def main():
     net_version = data['version']
     deb_url = data['x64DownloadUrl']['deb']
     
-    if not version:
+    if net_version != version:
         print("try update")
         if os.path.exists("./libs"):
             shutil.rmtree("./libs")
