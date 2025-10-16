@@ -64,7 +64,7 @@ def sign():
         print(f"call sign func failed: {e}")
         return {"error": "failed to call sign func"}, 400
     
-    return {"value": {"sign": sign, "token": token, "extra": extra}, "platform": "Linux", "version": version}
+    return {"value": {"sign": sign, "token": token, "extra": extra}}
 
 @app.route("/appinfo", methods=["GET"])
 @app.route("/sign/appinfo", methods=["GET"])
