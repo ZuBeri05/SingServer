@@ -59,7 +59,6 @@ def sign():
     
     try:
         ret, sign, token, extra = library_manager.sign(cmd, seq, src)
-        print(ret, "|", sign , "|", token, "|", extra)
     except Exception as e:
         print(f"call sign func failed: {e}")
         return {"error": "failed to call sign func"}, 400
