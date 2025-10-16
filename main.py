@@ -7,18 +7,24 @@ import requests
 import shutil
 import re
 import tarfile
-import ctypes
+import time
 
 from pypdl import Pypdl
 from flask import Flask, request
-from markupsafe import escape
 from ar import Archive
 
 library_manager = utils.LibraryManager()
 app_info = ""
 version = ""
+full_version = ""
 app = Flask("SignerServer")
 
+@app.route("/", methods=["GET"])
+def index():
+    # 302 to url
+    return "", 302, {"Location": "https://www.bilibili.com/video/BV1MQ4y1a7JY"}
+
+@app.route("/s", methods=["GET", "POST"])
 @app.route("/sign", methods=["GET", "POST"])
 def sign():
     cmd = ""
@@ -26,12 +32,12 @@ def sign():
     src = b""
     if request.method == "GET":
         cmd = request.args.get("cmd", "wtlogin.login")
-        seq_str = request.arg.get("seq", "281")
+        seq_str = request.args.get("seq", "281")
         try:
             seq = int(seq_str)
         except:
             return {"error": "seq is not int"}, 400
-        src_hex = request.arg.get("src", "0101")
+        src_hex = request.args.get("src", "0101")
         try:
             src = bytes.fromhex(src_hex)
         except:
@@ -58,14 +64,29 @@ def sign():
             return {"error": "failed to parse src"}, 400
     
     try:
+        start_time = time.time()
         ret, sign, token, extra = library_manager.sign(cmd, seq, src)
+        end_time = time.time()
     except Exception as e:
         print(f"call sign func failed: {e}")
         return {"error": "failed to call sign func"}, 400
     
-    return {"value": {"sign": sign, "token": token, "extra": extra}}
+    return {
+        "value": {
+            "sign": sign,
+            "token": token,
+            "extra": extra
+        },
+        "platform": "linux",
+        "version": full_version,
+        "debug": {
+            "ret": ret,
+            "time": int((end_time - start_time) * 1000)
+        }
+    }
 
 @app.route("/appinfo", methods=["GET"])
+@app.route("/s/appinfo", methods=["GET"])
 @app.route("/sign/appinfo", methods=["GET"])
 def get_appinfo():
     return app_info
@@ -104,7 +125,7 @@ def save_config(ip="0.0.0.0", port=29392, version=None, offset=0, app_info=""):
         f.write(json.dumps({"ip": ip, "port": port, "version": version, "offset": offset, "app_info": app_info}))
 
 def main():
-    global app_info, version
+    global app_info, version, full_version
     ip = "0.0.0.0"
     port = 29392
     offset = 0
@@ -208,13 +229,18 @@ def main():
                 "SubSigMap": 0,
                 "NTLoginType": 1,
             })
+        offset = int(offset_fucker.analyze_node_file_optimized("./libs/wrapper.node"), 16)
         save_config(ip, port, version, offset, app_info)
         
-    offset = int(offset_fucker.analyze_node_file_optimized("./libs/wrapper.node"), 16)
     print("init server...")
     os.chdir("./libs")
+    with open("./package.json", "r") as pkg_f:
+        pkg_json = json.loads(pkg_f.read())
+        full_version = pkg_json['version']
     library_manager.preload_libraries()
-    library_manager.load_module_and_function("./wrapper.node", offset)
+    if not library_manager.load_module_and_function("./wrapper.node", offset):
+        print("failed to load module, exit")
+        return
     os.chdir("../")
     
     print("launching http listener...")
