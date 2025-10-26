@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+tmp/
+libs/
+config.json  # 避免本地配置覆盖容器内生成的配置
